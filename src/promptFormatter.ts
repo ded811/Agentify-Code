@@ -168,6 +168,18 @@ export function formatPrompt(ctx: WorkspaceContext, userRequest: string, customS
         }
     }
 
+    // ── All workspace files ─────────────────────────────────────────────────
+    if (ctx.allWorkspaceFiles.length > 0) {
+        parts.push(`\n## All Workspace Files (${ctx.allWorkspaceFiles.length} files)`);
+        for (const f of ctx.allWorkspaceFiles) {
+            const note = f.truncated ? ` *(first ${maxOtherLines} of ${f.totalLines} lines)*` : '';
+            parts.push(`\n### ${f.path}${note}`);
+            parts.push(`\`\`\`${langFor(f.path)}`);
+            parts.push(f.content);
+            parts.push('```');
+        }
+    }
+
     // ── User request ────────────────────────────────────────────────────────
     parts.push('\n---\n');
     parts.push('## Your Task');

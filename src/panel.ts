@@ -37,7 +37,7 @@ export class BridgeViewProvider implements vscode.WebviewViewProvider {
                     try {
                         const systemPrompt  = this._ctx.globalState.get<string>(STORAGE_KEY);
                         const ctxSettings   = this._ctx.globalState.get<ContextSettings>(SETTINGS_KEY) ?? DEFAULT_CONTEXT_SETTINGS;
-                        const ctx = await gatherContext(msg.compact ?? false, ctxSettings);
+                        const ctx = await gatherContext(msg.compact ?? false, msg.allFiles ?? false, ctxSettings);
                         const prompt = formatPrompt(ctx, msg.userRequest ?? '', systemPrompt, ctxSettings.maxOpenTabs, ctxSettings.maxOtherFilesLines);
                         this._post({ command: 'promptReady', prompt });
                     } catch (e: any) {
@@ -201,7 +201,8 @@ function getHtml(): string {
 
   .settings-row {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     margin-bottom: 4px;
   }
 
@@ -209,7 +210,6 @@ function getHtml(): string {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 1;
   }
 
   .settings-field-label {
@@ -341,17 +341,22 @@ function getHtml(): string {
     margin: 16px 0;
   }
 
-  /* Compact mode toggle */
-  .toggle-row {
+  /* Context mode radios */
+  .mode-group {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    flex-direction: column;
+    gap: 5px;
+    margin: 8px 0;
     font-size: 12px;
   }
-  .toggle-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-  .toggle-row input[type=checkbox] { cursor: pointer; }
-  .toggle-hint {
+  .mode-option {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .mode-option input[type=radio] { cursor: pointer; flex-shrink: 0; margin-top: 1px; }
+  .mode-hint {
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
   }
@@ -511,12 +516,22 @@ function getHtml(): string {
   <textarea id="request-input" rows="3"
     placeholder="What do you want help with? e.g. 'Fix the auth bug on line 42', 'Add unit tests for UserService', 'Refactor the API module'"></textarea>
 
-  <div class="toggle-row" style="margin-top:8px">
-    <label>
-      <input type="checkbox" id="compact-toggle">
-      Compact mode
+  <div class="mode-group">
+    <label class="mode-option">
+      <input type="radio" name="ctx-mode" value="normal" checked>
+      <span>Normal</span>
+      <span class="mode-hint">— open tabs (up to limit)</span>
     </label>
-    <span class="toggle-hint">— sends only file tree + git diff + active file (faster, for large codebases)</span>
+    <label class="mode-option">
+      <input type="radio" name="ctx-mode" value="compact">
+      <span>Compact</span>
+      <span class="mode-hint">— file tree + git diff + active file only</span>
+    </label>
+    <label class="mode-option">
+      <input type="radio" name="ctx-mode" value="allfiles">
+      <span>All Files</span>
+      <span class="mode-hint">— every text file in the workspace</span>
+    </label>
   </div>
 
   <div class="row">
@@ -570,7 +585,6 @@ function getHtml(): string {
 
   const requestInput       = document.getElementById('request-input');
   const responseInput      = document.getElementById('response-input');
-  const compactToggle      = document.getElementById('compact-toggle');
   const btnBuild           = document.getElementById('btn-build');
   const btnRebuild         = document.getElementById('btn-rebuild');
   const btnCopy            = document.getElementById('btn-copy');
@@ -623,10 +637,12 @@ function getHtml(): string {
     setStatus(buildStatus, 'Scanning workspace...', '');
     btnBuild.disabled = true;
     copiedBanner.classList.remove('show');
+    const mode = document.querySelector('input[name="ctx-mode"]:checked').value;
     vscode.postMessage({
       command: 'gatherContext',
       userRequest: requestInput.value,
-      compact: compactToggle.checked
+      compact: mode === 'compact',
+      allFiles: mode === 'allfiles'
     });
   }
 

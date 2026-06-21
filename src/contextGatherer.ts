@@ -7,8 +7,23 @@ const IGNORE_DIRS = new Set([
     'coverage', '.nyc_output', 'vendor', '.turbo', '.svelte-kit'
 ]);
 
+const TEXT_EXTENSIONS = new Set([
+    'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs',
+    'py', 'rs', 'go', 'java', 'cs', 'cpp', 'c', 'h', 'hpp',
+    'html', 'htm', 'css', 'scss', 'less', 'sass',
+    'json', 'jsonc', 'yaml', 'yml', 'toml', 'xml',
+    'md', 'mdx', 'txt', 'sh', 'bash', 'zsh', 'ps1',
+    'sql', 'graphql', 'gql', 'proto',
+    'vue', 'svelte', 'astro',
+    'env', 'gitignore', 'editorconfig', 'prettierrc', 'eslintrc', 'babelrc'
+]);
+
+const KNOWN_TEXT_FILENAMES = new Set([
+    'makefile', 'dockerfile', 'license', 'readme', 'changelog',
+    'procfile', 'vagrantfile', 'gemfile', 'rakefile'
+]);
+
 const MAX_ACTIVE_FILE_LINES = 600;
-const MAX_OTHER_FILE_LINES = 200;
 const MAX_FILE_BYTES = 60_000;
 
 export interface FileInfo {
@@ -26,6 +41,7 @@ export interface WorkspaceContext {
     fileTree: string;
     activeFile: FileInfo | null;
     openFiles: FileInfo[];
+    allWorkspaceFiles: FileInfo[];
     selection: string | null;
     selectionFile: string | null;
     selectionRange: string | null;
@@ -98,6 +114,35 @@ async function readFile(uri: vscode.Uri, rootPath: string, maxLines: number): Pr
     } catch {
         return null;
     }
+}
+
+async function getAllTextFiles(rootUri: vscode.Uri, rootPath: string, maxLines: number, depth = 0): Promise<FileInfo[]> {
+    if (depth > 5) return [];
+    const results: FileInfo[] = [];
+
+    let entries: [string, vscode.FileType][];
+    try {
+        entries = await vscode.workspace.fs.readDirectory(rootUri);
+    } catch {
+        return [];
+    }
+
+    for (const [name, type] of entries) {
+        if (name.startsWith('.')) continue;
+        if (type === vscode.FileType.Directory) {
+            if (IGNORE_DIRS.has(name)) continue;
+            const sub = await getAllTextFiles(vscode.Uri.joinPath(rootUri, name), rootPath, maxLines, depth + 1);
+            results.push(...sub);
+        } else {
+            const ext = name.split('.').pop()?.toLowerCase() ?? '';
+            const nameLower = name.toLowerCase();
+            if (!TEXT_EXTENSIONS.has(ext) && !KNOWN_TEXT_FILENAMES.has(nameLower)) continue;
+            const info = await readFile(vscode.Uri.joinPath(rootUri, name), rootPath, maxLines);
+            if (info) results.push(info);
+        }
+    }
+
+    return results;
 }
 
 async function getGitContext(): Promise<{ branch: string | null; status: string | null; recentChanges: string | null }> {
@@ -200,7 +245,7 @@ export const DEFAULT_CONTEXT_SETTINGS: ContextSettings = {
     maxOpenTabs: 6
 };
 
-export async function gatherContext(compact = false, settings: ContextSettings = DEFAULT_CONTEXT_SETTINGS): Promise<WorkspaceContext> {
+export async function gatherContext(compact = false, allFiles = false, settings: ContextSettings = DEFAULT_CONTEXT_SETTINGS): Promise<WorkspaceContext> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders?.length) {
         throw new Error('No workspace folder open. Please open a folder first.');
@@ -233,17 +278,31 @@ export async function gatherContext(compact = false, settings: ContextSettings =
         }
     }
 
-    // In compact mode, skip open tabs, manifests, and config files.
-    // Instead fetch the actual git diff so the AI sees exactly what changed.
     let openFiles: FileInfo[] = [];
+    let allWorkspaceFiles: FileInfo[] = [];
     let projectManifest: FileInfo | null = null;
     const configFiles: FileInfo[] = [];
     let gitDiff: string | null = null;
 
     if (compact) {
         gitDiff = await getGitDiff();
+    } else if (allFiles) {
+        // Walk every text file in the workspace, skip the active file (shown separately)
+        const all = await getAllTextFiles(root.uri, rootPath, settings.maxOtherFilesLines);
+        const activePath = activeFile?.path;
+        allWorkspaceFiles = activePath ? all.filter(f => f.path !== activePath) : all;
+
+        // Still include manifests and config in all-files mode
+        for (const name of MANIFEST_NAMES) {
+            const info = await readFile(vscode.Uri.joinPath(root.uri, name), rootPath, 300);
+            if (info && !info.content.startsWith('[')) { projectManifest = info; break; }
+        }
+        for (const name of CONFIG_NAMES) {
+            const info = await readFile(vscode.Uri.joinPath(root.uri, name), rootPath, 100);
+            if (info && !info.content.startsWith('[')) configFiles.push(info);
+        }
     } else {
-        // All open tabs (skip active)
+        // Normal: open tabs only
         const seen = new Set<string>(editor ? [editor.document.uri.toString()] : []);
         for (const group of vscode.window.tabGroups.all) {
             for (const tab of group.tabs) {
@@ -257,13 +316,10 @@ export async function gatherContext(compact = false, settings: ContextSettings =
             }
         }
 
-        // Project manifest
         for (const name of MANIFEST_NAMES) {
             const info = await readFile(vscode.Uri.joinPath(root.uri, name), rootPath, 300);
             if (info && !info.content.startsWith('[')) { projectManifest = info; break; }
         }
-
-        // Config files
         for (const name of CONFIG_NAMES) {
             const info = await readFile(vscode.Uri.joinPath(root.uri, name), rootPath, 100);
             if (info && !info.content.startsWith('[')) configFiles.push(info);
@@ -280,6 +336,7 @@ export async function gatherContext(compact = false, settings: ContextSettings =
         fileTree,
         activeFile,
         openFiles,
+        allWorkspaceFiles,
         selection,
         selectionFile,
         selectionRange,
