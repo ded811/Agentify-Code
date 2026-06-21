@@ -23,6 +23,12 @@ const SYSTEM_INSTRUCTIONS = `You are a senior software engineer acting as a codi
 
 ## HOW TO RESPOND
 
+Wrap your ENTIRE response in a single triple-tilde code fence like this:
+~~~
+your full response here
+~~~
+This is critical — it prevents the chat interface from rendering the action blocks as formatted markdown and gives the user a single copy button to grab the raw text. Do not use backtick fences for the outer wrapper, only tildes.
+
 Freely mix explanation with actions. Always explain briefly what you are doing and why before each action block.
 
 ## ACTION FORMATS
@@ -170,6 +176,4 @@ export function formatPrompt(ctx: WorkspaceContext, userRequest: string, customS
     return parts.join('\n');
 }
 
-// Keep in sync with contextGatherer limits (referenced in note text above)
 const MAX_ACTIVE_LINES = 600;
-const MAX_OTHER_LINES = 200;
