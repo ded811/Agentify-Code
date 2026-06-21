@@ -1,0 +1,56 @@
+{
+  "name": "agentify-code",
+  "displayName": "Agentify Code",
+  "description": "Turn any AI into a coding agent — build rich prompts from your workspace, paste responses back, approve actions before they run",
+  "version": "0.1.0",
+  "publisher": "agentify-code",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agentify-code-container",
+          "title": "Agentify Code",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agentify-code-container": [
+        {
+          "type": "webview",
+          "id": "agentify-code.view",
+          "name": "Agentify Code"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "agentify-code.open",
+        "title": "Agentify Code: Open",
+        "icon": "$(robot)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "agentify-code.open",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.3.0"
+  }
+}

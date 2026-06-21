@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Bridge arches -->
+  <path d="M2 17 Q6 9 12 9 Q18 9 22 17"/>
+  <!-- Vertical supports -->
+  <line x1="8" y1="17" x2="8" y2="12"/>
+  <line x1="16" y1="17" x2="16" y2="12"/>
+  <!-- Road/deck -->
+  <line x1="2" y1="17" x2="22" y2="17"/>
+  <!-- Towers -->
+  <line x1="8" y1="9" x2="8" y2="6"/>
+  <line x1="16" y1="9" x2="16" y2="6"/>
+</svg>
