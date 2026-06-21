@@ -19,7 +19,19 @@ Agentify Code builds a rich, structured prompt from your workspace (files, git s
 
 ## Installation
 
-### Option A - Install from folder (recommended)
+### Option A - Install from VSIX (easiest, no Node.js required)
+
+1. Download the `agentify-code-0.1.0.vsix` file
+2. Open VS Code and go to the Extensions panel (`Ctrl+Shift+X`)
+3. Click the `...` menu at the top right of the panel
+4. Choose **Install from VSIX** and select the file
+
+Or from the terminal:
+```
+code --install-extension agentify-code-0.1.0.vsix
+```
+
+### Option B - Install from folder
 
 1. Clone or download this repository
 2. Open a terminal in the `Agentify Code` folder
@@ -33,7 +45,7 @@ Agentify Code builds a rich, structured prompt from your workspace (files, git s
    - **macOS/Linux:** `~/.vscode/extensions/agentify-code-0.1.0`
 5. Restart VS Code
 
-### Option B - Run in development mode
+### Option C - Run in development mode
 
 1. Clone the repository
 2. Open the `Agentify Code` folder in VS Code
